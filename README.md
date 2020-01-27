@@ -12,9 +12,9 @@ Bright:
 https://github.com/DigitalMars/me
 
 The basic editor codebase is split into 3 sections:
-  ced_*   - The core editor and cross platform code
-  osx_*   - The OSX platform layer for the editor.
-  gilesc_ - My own personal C libraries
+  + ced_*   - The core editor and cross platform code
+  + osx_*   - The OSX platform layer for the editor.
+  + gilesc_ - My own personal C libraries
 
 The idea for the platform layers is to split the platform specific
 code into its own layer calling into the 'core' of the editor.
