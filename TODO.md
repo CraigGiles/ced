@@ -6,6 +6,18 @@
 ## Backlog
 + TODO: Moving the terminal doesn't re-size the 'terminal dimensions'
 
+### File's containing TODOs
++ ./src/osx_main_terminal.h: // TODO: move this to ced.h
++ ./src/osx_main_terminal.c: // TODO get more than one more key-press
++ ./src/osx_main_terminal.c: // TODO: maybe move this into the editor as a 'process_key_input'
++ ./src/osx_main_terminal.c: // TODO: How big should buffer init be?
++ ./src/osx_main_terminal.c: // TODO: move this to the editor not the presentation layer
++ ./src/osx_main_terminal.c: // TODO remove 'terminal' from these api calls
++ ./src/ced_normal_mode.c:   // TODO clamp
++ ./src/ced_normal_mode.c:   // TODO: guard against moving past the end of the buffer
++ ./src/ced_normal_mode.c:   // TODO clamp
++ ./src/ced_insert_mode.c:   // TODO when dealing with UTF8 this wont work
+
 
 ## Exploration
  
