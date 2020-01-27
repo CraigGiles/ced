@@ -12,8 +12,7 @@ move_cursor_to(s32 x, s32 y)
 
 global_variable Terminal *terminal;
 global_variable struct termios orig_termios;   /* In order to restore at exit.*/
-global_variable struct termios old_term_state; /* saved tty state */
-global_variable struct termios raw_state; /* values for editor mode */
+global_variable struct termios raw_state;      /* values for editor mode */
 
 #if 1
 internal Position
@@ -51,7 +50,7 @@ terminal_open(Terminal *term, int fd)
 {
     if (!term->rawmode && isatty(STDIN_FILENO))
     {
-        printf("\x1b[?1049h"); // switch to alternate screen
+        printf(TERM_TO_ALTERNATE_SCREEN); // switch to alternate screen
 
         tcgetattr(fd, &orig_termios);
         raw_state = orig_termios;          /* modify the original mode */
@@ -91,7 +90,7 @@ terminal_close(Terminal *term, s32 fd)
 {
     tcsetattr(fd, TCSAFLUSH, &orig_termios);
     term->rawmode = 0;
-    printf("\x1b[?1049l"); // switch from alternate screen
+    printf(TERM_FROM_ALTERNATE_SCREEN); // switch from alternate screen
     move_cursor_to(term->original_position.x, term->original_position.y);
 }
 

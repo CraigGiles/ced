@@ -3,19 +3,21 @@
 
 #include "ced.h"
 
-#define TERM_CLEAR_SCREEN        "\x1b[2J"
-#define TERM_HIDE_CURSOR         "\x1b[?25l"
-#define TERM_SHOW_CURSOR         "\x1b[?25h"
-#define TERM_MOVE_CURSOR_UP      "\x1b[%dA"
-#define TERM_MOVE_CURSOR_RIGHT   "\x1b[%dC"
-#define TERM_MOVE_CURSOR_DOWN    "\x1b[%dB"
-#define TERM_MOVE_CURSOR_LEFT    "\x1b[%dD"
-#define TERM_MOVE_CURSOR_TO      "\x1b[%d;%dH"
-#define TERM_MOVE_CURSOR_HOME    "\x1b[H"
-#define TERM_RESET_COLOR         "\x1b[0m"
-#define TERM_GET_CURSOR_LOCATION "\x1b[6n"
-#define TERM_CLEAR_RIGHT         "\x1b[K"
-#define TERM_COLOR_RESET         "\x1b[0m"
+#define TERM_TO_ALTERNATE_SCREEN   "\x1b[?1049h"
+#define TERM_FROM_ALTERNATE_SCREEN "\x1b[?1049l"
+#define TERM_CLEAR_SCREEN          "\x1b[2J"
+#define TERM_HIDE_CURSOR           "\x1b[?25l"
+#define TERM_SHOW_CURSOR           "\x1b[?25h"
+#define TERM_MOVE_CURSOR_UP        "\x1b[%dA"
+#define TERM_MOVE_CURSOR_RIGHT     "\x1b[%dC"
+#define TERM_MOVE_CURSOR_DOWN      "\x1b[%dB"
+#define TERM_MOVE_CURSOR_LEFT      "\x1b[%dD"
+#define TERM_MOVE_CURSOR_TO        "\x1b[%d;%dH"
+#define TERM_MOVE_CURSOR_HOME      "\x1b[H"
+#define TERM_RESET_COLOR           "\x1b[0m"
+#define TERM_GET_CURSOR_LOCATION   "\x1b[6n"
+#define TERM_CLEAR_RIGHT           "\x1b[K"
+#define TERM_COLOR_RESET           "\x1b[0m"
 
 #if 0
 #define BUFFER_NAME_LENGTH 80
@@ -28,7 +30,7 @@
 #define false 0
 #endif
 
-// #define ESC           0x001B
+// TODO: move this to ced.h
 #define ARROW_UP      0x4800      /* Up arrow key                 */
 #define ARROW_DOWN    0x5000      /* Down arrow key               */
 #define ARROW_RIGHT   0x4D00      /* Right arrow key              */
