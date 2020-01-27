@@ -24,9 +24,24 @@ me actually using this as a day to day driver unless I really get
 annoyed with my current editor options, I've put it under the MIT
 license.
 
-# Build Statistics for 27th Jan, 2020
+## Build Statistics for 27th Jan, 2020
 
-### Compile Time (ctime): 0.279 seconds
+### Compile Time (ctime):
+
+```
+Latest compile timing: 0.279 seconds
+
+ctime_info.ctm Statistics
+Total complete timings: 2385
+Total incomplete timings: 0
+Days with timings: 12
+Days between first and last timing: 10
+Timings marked successful (2385):
+  Slowest: 1.966 seconds
+  Fastest: 0.024 seconds
+  Average: 0.331 seconds
+  Total: 13 minutes, 10.316 seconds
+```
 
 ### Lines of Code (cloc):
 ```
