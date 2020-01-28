@@ -7,6 +7,10 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <signal.h>
+
 #define TERM_TO_ALTERNATE_SCREEN   "\x1b[?1049h"
 #define TERM_FROM_ALTERNATE_SCREEN "\x1b[?1049l"
 #define TERM_CLEAR_SCREEN          "\x1b[2J"

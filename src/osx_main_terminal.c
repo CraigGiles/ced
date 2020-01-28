@@ -248,11 +248,7 @@ render(s32 window_count, Window *windows)
     write(STDOUT_FILENO, TERM_CLEAR_RIGHT, 3); // clear the rest of the line
 }
 
-#include <sys/mman.h>
-#include <fcntl.h>
-
 global_variable Terminal *term;
-#include <signal.h>
 
 internal void
 sigwinch_handler()
