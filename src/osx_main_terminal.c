@@ -252,6 +252,31 @@ render(s32 window_count, Window *windows)
 #include <fcntl.h>
 
 global_variable Terminal *term;
+#include <signal.h>
+
+internal void
+sigwinch_handler()
+{
+    struct winsize ws;
+    ioctl(STDIN_FILENO, TIOCGWINSZ, &ws);
+
+    terminal->max_row_count = ws.ws_row;
+    terminal->max_column_count = ws.ws_col;
+}
+
+internal void
+setup_sigwatch(Terminal *terminal)
+{
+    struct sigaction sa;
+
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sa.sa_handler = sigwinch_handler;
+
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sa.sa_handler = sigwinch_handler;
+}
 
 int main(s32 argc, char *argv[])
 {
@@ -278,6 +303,10 @@ int main(s32 argc, char *argv[])
 
     Editor *editor = &terminal->editor;
     editor->mode = EditorMode_Insert;
+
+    #if 1
+    setup_sigwatch(terminal);
+    #endif 
 
     b32 running = true;
     while (running)
