@@ -1,6 +1,4 @@
 #include "ced_buffer.c"
-#include "ced_insert_mode.c"
-#include "ced_normal_mode.c"
 
 internal u8
 to_upper(u8 c)

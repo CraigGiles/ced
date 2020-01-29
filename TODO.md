@@ -2,9 +2,13 @@
 
 ## Current Task
 + DONE: Gap Buffer
++ DONE: Moving the terminal doesn't re-size the 'terminal dimensions'
++ DONE: Opening a file from command line
 
 ## Backlog
-+ TODO: Moving the terminal doesn't re-size the 'terminal dimensions'
++ TODO: Moving right past the gap crashes the program
++ TODO: Inserting text past the max-length of the window doesn't move the cursor
++ TODO: Moving around the file
 
 ### File's containing TODOs
 + ./src/osx_main_terminal.h: // TODO: move this to ced.h

@@ -3,6 +3,36 @@
 #include "ced.c"
 
 internal void
+editor_open_file(Buffer *buffer, char *filename)
+{
+    char* result = 0;
+    FILE *file = fopen(filename, "r");
+
+    char ch;
+    while ((ch = getc(file)) != EOF)
+    {
+	if (ch == '\r')
+	{
+	    continue;
+	}
+	else if (ch == '\n')
+	{
+	    buffer_insert_newline(buffer);
+	    buffer_insert_string(buffer, TERM_CLEAR_RIGHT);
+	}
+	else
+	{
+	    buffer_insert(buffer, ch);
+	}
+    }
+
+    fclose(file);
+    buffer->filename = strdup(filename);
+    buffer_move_to_beginning(buffer);
+}
+
+
+internal void
 move_cursor_to(s32 x, s32 y)
 {
     char tmp[64];
@@ -215,11 +245,6 @@ create_terminal()
 
     ed->window_count = 1;
 
-    // NOTE IMPORTANT CLEANUP NOTE: test
-    ed->windows[0].cursor_position.x = 0;
-    ed->windows[0].cursor_position.y = 0;
-    buffer_init(&ed->windows[0].buffer, MAX_INITIAL_LINES * sizeof(char)); // TODO how big should this thing be?
-
     return result;
 }
 
@@ -227,8 +252,8 @@ internal void
 render(s32 window_count, Window *windows)
 {
     // write(STDOUT_FILENO, display.contents, display.length);
-    write(STDOUT_FILENO, TERM_CLEAR_SCREEN, 2); /* clear screen */
-    write(STDOUT_FILENO, TERM_HIDE_CURSOR, 6); /* Hide cursor. */
+    write(STDOUT_FILENO, TERM_CLEAR_SCREEN, 2);     /* clear screen */
+    write(STDOUT_FILENO, TERM_HIDE_CURSOR, 6);      /* Hide cursor. */
     write(STDOUT_FILENO, TERM_MOVE_CURSOR_HOME, 3); /* Go home. */
 
     for (s32 window_index = 0;
@@ -239,7 +264,11 @@ render(s32 window_count, Window *windows)
 	Buffer *buffer = &w->buffer;
 	Position pos = w->cursor_position;
 
+	#if 1
 	buffer_write(buffer, stdout);
+	#endif
+
+	// TODO: get all the 'lines' in the buffer
 
 	move_cursor_to(pos.x, pos.y);
     }
@@ -274,25 +303,114 @@ setup_sigwatch(Terminal *terminal)
     sa.sa_handler = sigwinch_handler;
 }
 
+#include <errno.h>
+
+#if 1
+/* Load the specified program in the editor memory and returns 0 on success
+ * or 1 on error. */
+Position editor_open(Buffer *buffer, char *filename)
+{
+    // TODO use pread
+    s32 errno;
+    FILE *fp;
+    Position pos = {};
+
+    fp = fopen(filename,"r");
+    if (!fp) {
+        if (errno != ENOENT) {
+            perror("Opening file");
+            exit(1);
+        }
+        return pos;
+    }
+
+    char *line = NULL;
+    size_t linecap = 0;
+    ssize_t linelen;
+
+    while((linelen = getline(&line,&linecap,fp)) != -1)
+    {
+        if (linelen && (line[linelen-1] == '\n' || line[linelen-1] == '\r'))
+	{
+	    line[--linelen] = '\0';
+	    buffer_insert_string(buffer, line);
+	    buffer_insert_string(buffer, "\r\n");
+	    buffer_insert_string(buffer, TERM_CLEAR_RIGHT);
+	}
+
+    }
+
+    free(line);
+    fclose(fp);
+
+    return pos;
+}
+#endif
+
+internal void
+move_left(Window *window)
+{
+    Buffer *buffer = &window->buffer;
+    window->cursor_position.x -= 1;
+    buffer_backward(buffer);
+}
+
+internal void
+move_right(Window *window)
+{
+    Buffer *buffer = &window->buffer;
+    window->cursor_position.x += 1;
+    buffer_forward(buffer);
+}
+
+internal void
+handle_input(Editor *editor, Window *window, s16 key_code)
+{
+    Buffer *buffer = &window->buffer;
+
+    switch (key_code)
+    {
+        case ESCAPE:
+        {
+            editor->mode = EditorMode_Normal;
+        } break;
+
+        case BACKSPACE:
+        {
+            window->cursor_position.x -= 1;
+	    buffer_backspace(buffer);
+        } break;
+
+	case CTRL('H'): // left
+	{
+	    move_left(window);
+	} break;
+
+	case CTRL('L'): // right
+	{
+	    move_right(window);
+	} break;
+
+        default:
+        {
+	    if (key_code == '\r')
+	    {
+	    	window->cursor_position.x = 0;
+	    	window->cursor_position.y += 1;
+	    	buffer_insert_string(buffer, TERM_CLEAR_RIGHT);
+	    	buffer_insert_newline(buffer);
+	    }
+	    else
+	    {
+		buffer_insert(buffer, key_code);
+		window->cursor_position.x += 1;
+	    }
+	}
+    }
+}
+
 int main(s32 argc, char *argv[])
 {
-    // NOTE: Memory Mapping a File
-    #if 0
-    int fd = open("/usr/share/dict/words", O_RDONLY);
-    // int fd = open("data/files/hello_sailor.txt", O_RDONLY);
-    u64 pagesize = getpagesize();
-
-    char * region = mmap((void*) (pagesize * (1 << 20)),
-			 pagesize,
-			 PROT_READ,
-			 MAP_FILE|MAP_PRIVATE,
-			 fd, 0);
-
-    fwrite(region, 1, pagesize, stdout);
-    int unmap_result = munmap(region, pagesize);
-    close(fd);
-    #endif
-
     #if 1
     terminal = create_terminal();
     terminal->original_position = get_cursor_position(STDIN_FILENO, STDOUT_FILENO);
@@ -304,10 +422,21 @@ int main(s32 argc, char *argv[])
     setup_sigwatch(terminal);
     #endif 
 
+    // Loading file
+    #if 1
+    Window *active_window = editor->windows + editor->active_window;
+    buffer_initialize(&active_window->buffer);
+
+    if (argc > 1)
+    {
+	editor_open_file(&active_window->buffer, argv[1]);
+    }
+    #endif
+
     b32 running = true;
     while (running)
     {
-	Window *active_window = editor->windows + editor->active_window;
+	active_window = editor->windows + editor->active_window;
 	move_cursor_to(active_window->cursor_position.x, active_window->cursor_position.y);
 
 	// -- Render
@@ -318,10 +447,10 @@ int main(s32 argc, char *argv[])
 	// TODO: move this to the editor not the presentation layer
 	Position pos = {};
 	char tmp[1024];
-	sprintf(tmp, "[%s][CPos(%i, %i)][TPos(%i, %i)][Terminal(%i, %i)]",
+	sprintf(tmp, "[-%s-][%s][(%i, %i)]",
 		mode_to_string(editor->mode), 
-		active_window->cursor_position.x, active_window->cursor_position.y,
-		pos.x, pos.y, terminal->max_row_count, terminal->max_column_count);
+		active_window->buffer.filename,
+		active_window->cursor_position.x, active_window->cursor_position.y);
 
 	move_cursor_to(0, terminal->max_row_count-1);
 	printf("%s%s", "\x1b[43m", TERM_CLEAR_RIGHT); // yello background and clear right
@@ -336,22 +465,24 @@ int main(s32 argc, char *argv[])
 	fflush(stdout);
 	// NOTE: end rendering
 
+	// ----------------------------------
 	// -- Update
 	// ----------------------------------
-
-	// update state
 
 	// -- Read Input
 	// ----------------------------------
 	s16 key_code = get_key(STDIN_FILENO);
 	if (key_code == CTRL('Q')) running = false;
 	
+	handle_input(editor, active_window, key_code);
+	#if 0
 	switch (editor->mode)
 	{
 	    // TODO remove 'terminal' from these api calls
 	    case EditorMode_Normal: { handle_input_normal_mode(editor, active_window, key_code); } break;
 	    case EditorMode_Insert: { handle_input_insert_mode(editor, active_window, key_code); } break;
 	}
+	#endif
 	
     }
     
