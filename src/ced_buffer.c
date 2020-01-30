@@ -1,6 +1,22 @@
 internal void
 buffer_insert_line(Buffer *b, s32 index, char *text, s32 len)
 {
+    // appending a new line to the buffer
+    Line *tmp = realloc(b->lines, sizeof(Line) * b->line_count + 1);
+    if (!tmp)
+    {
+	// TODO: Could not allocate new line
+    }
+    else
+    {
+	b->lines = tmp;
+	b->line_count++;
+	b->lines[index].text = malloc(len + 1);
+	memcpy(b->lines[index].text, text, len + 1);
+	b->lines[index].index = index;
+    }
+
+    #if 0
     if (index <= b->line_count)
     {
 	if (index != b->line_count)
@@ -17,11 +33,12 @@ buffer_insert_line(Buffer *b, s32 index, char *text, s32 len)
 	b->lines = realloc(b->lines, sizeof(Line) * b->line_count + 1);
 	b->line_count++;
 
-	b->lines[index].size = len;
+	b->lines[index].length = len;
 	b->lines[index].text = malloc(len + 1);
 	memcpy(b->lines[index].text, text, len + 1);
 	b->lines[index].index = index;
     }
+    #endif
 }
 
 internal void
@@ -32,6 +49,9 @@ buffer_initialize(Buffer *b, char *name)
     strncpy(b->name, name, len);
 
     buffer_insert_line(b, 0, "", 1);
+
+    b->cursor_row = 0;
+    b->cursor_index = 0;
 }
 
 internal void // TODO: should we return 'true' or 'false'
@@ -46,7 +66,7 @@ buffer_insert(Buffer *b, s32 c)
         int padlen = at - row->used;
 
         /* In the next line +2 means: new char and null term. */
-        row->text = realloc(row->text, row->used+padlen+2);
+        row->text = realloc(row->text, row->used + padlen + 2);
         memset(row->text + row->used, ' ', padlen);
         row->text[row->used + padlen + 1] = '\0';
         row->used += padlen + 1;
@@ -63,6 +83,73 @@ buffer_insert(Buffer *b, s32 c)
     
     s32 index = b->cursor_index++;
     row->text[index] = c;
+}
+
+internal void
+buffer_insert_newline(Buffer *b)
+{
+    b->cursor_row++;
+    b->cursor_index = 0;
+    buffer_insert_line(b, b->cursor_row, "", 0);
+#if 0
+    int fileline = b->cursor_row;
+    int filecol = b->cursor_index;
+    Line *line = (fileline >= b->line_count) ? NULL : &b->lines[fileline];
+
+    if (!line) {
+	if (fileline == b->line_count) {
+	    buffer_insert_line(b, fileline, "", 0);
+
+	    if (b->cursor_row == b->line_count - 1) {
+		// b->rowoff++; // TODO useful for when rendering a portion of the row
+	    } else {
+		b->cursor_row++;
+	    }
+	    b->cursor_index = 0;
+	}
+	return;
+    }
+    /* If the cursor is over the current line size, we want to conceptually
+     * think it's just over the last character. */
+    if (filecol >= line->length) filecol = line->length;
+    if (filecol == 0) {
+	buffer_insert_line(b, fileline, "", 0);
+    } else {
+	/* We are in the middle of a line. Split it between two lines. */
+	buffer_insert_line(b, fileline + 1, line->text + filecol, line->length - filecol);
+
+	line = &b->lines[fileline];
+	line->text[filecol] = '\0';
+	line->length = filecol;
+    }
+#endif
+
+#if 0
+    int filerow = b->rowoff + b->cursor_row;
+    int filecol = b->coloff + b->cursor_index;
+    erow *row = (filerow >= b->numrows) ? NULL : &b->row[filerow];
+
+    if (!row) {
+	if (filerow == b->numrows) {
+	    editorInsertRow(filerow, "", 0);
+	    goto fixcursor;
+	}
+	return;
+    }
+    /* If the cursor is over the current line size, we want to conceptually
+     * think it's just over the last character. */
+    if (filecol >= row->size) filecol = row->size;
+    if (filecol == 0) {
+	editorInsertRow(filerow, "", 0);
+    } else {
+	/* We are in the middle of a line. Split it between two rows. */
+	editorInsertRow(filerow + 1, row->chars + filecol, row->size-filecol);
+	row = &b->row[filerow];
+	row->chars[filecol] = '\0';
+	row->size = filecol;
+	editorUpdateRow(row);
+    }
+#endif
 }
 
 internal void

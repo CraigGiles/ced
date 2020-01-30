@@ -6,7 +6,7 @@
 
 typedef struct {
     s32 index;
-    s16 size;
+    s16 length;
     s16 used;
     char *text;
 } Line;

@@ -260,14 +260,18 @@ render(s32 window_count, Window *windows)
     {
 	Window *w = windows + window_index;
 	Buffer *buffer = &w->buffer;
-	#if 0
-	Position pos = buffer->cursor_position;
 
-	buffer_write(buffer, stdout);
-	write(STDOUT_FILENO, TERM_CLEAR_RIGHT, 3);     // clear the rest of the line
-
-	move_cursor_to(pos.x, pos.y);
-	#endif
+	// TODO render only the visible portion of the buffer
+	s32 line_start = 0;
+	s32 line_end   = buffer->line_count;
+	for (s32 line_index = line_start;
+	     line_index < line_end;
+	     ++line_index)
+	{
+	    Line *line = buffer->lines + line_index;
+	    fwrite(line->text, 1, line->used, stdout);
+	    write(STDOUT_FILENO, TERM_CLEAR_RIGHT, 3);     // clear the rest of the line
+	}
     }
 
     write(STDOUT_FILENO, TERM_SHOW_CURSOR, 6);         // Show cursor.
@@ -379,7 +383,7 @@ handle_input(Editor *editor, Window *window, s16 key_code)
 	    }
 	    else if (key_code == '\n')
 	    {
-	    	// buffer_insert_newline(buffer);
+	    	buffer_insert_newline(buffer);
 	    }
 	    else
 	    {
@@ -463,7 +467,6 @@ int main(s32 argc, char *argv[])
 	Buffer *buffer = &w->buffer;
 
 	printf("%s", buffer->lines[0].text);  // TODO -- temp
-	// buffer_write(buffer, stdout);
 	printf("\n");
     }
 #endif
