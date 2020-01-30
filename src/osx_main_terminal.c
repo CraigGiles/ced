@@ -27,7 +27,7 @@ editor_open_file(Buffer *buffer, char *filename)
     }
 
     fclose(file);
-    buffer->filename = strdup(filename);
+    strncpy(buffer->filename, filename, MAX_BUFFER_NAME); // TODO: ensure we're only copying filename
     buffer_move_to_beginning(buffer);
 }
 
@@ -49,7 +49,7 @@ internal Position
 get_cursor_position(int ifd, int ofd)
 {
     Position result = {};
-
+#if 0
     char buf[32];
     unsigned int i = 0;
     int rows;
@@ -59,9 +59,9 @@ get_cursor_position(int ifd, int ofd)
 
     /* Read the response: ESCAPE [ rows ; cols R */
     while (i < sizeof(buf)-1) {
-        if (read(ifd,buf+i,1) != 1) break;
-        if (buf[i] == 'R') break;
-        i++;
+	if (read(ifd,buf+i,1) != 1) break;
+	if (buf[i] == 'R') break;
+	i++;
     }
     buf[i] = '\0';
 
@@ -71,6 +71,7 @@ get_cursor_position(int ifd, int ofd)
 
     result.y = rows - 1;
     result.x = cols - 1;
+#endif
     return result;
 }
 #endif
@@ -262,10 +263,11 @@ render(s32 window_count, Window *windows)
     {
 	Window *w = windows + window_index;
 	Buffer *buffer = &w->buffer;
-	Position pos = w->cursor_position;
+	Position pos = buffer->cursor_position;
 
 	#if 1
 	buffer_write(buffer, stdout);
+	write(STDOUT_FILENO, TERM_CLEAR_RIGHT, 3); // clear the rest of the line
 	#endif
 
 	// TODO: get all the 'lines' in the buffer
@@ -351,7 +353,6 @@ internal void
 move_left(Window *window)
 {
     Buffer *buffer = &window->buffer;
-    window->cursor_position.x -= 1;
     buffer_backward(buffer);
 }
 
@@ -359,7 +360,6 @@ internal void
 move_right(Window *window)
 {
     Buffer *buffer = &window->buffer;
-    window->cursor_position.x += 1;
     buffer_forward(buffer);
 }
 
@@ -377,7 +377,6 @@ handle_input(Editor *editor, Window *window, s16 key_code)
 
         case BACKSPACE:
         {
-            window->cursor_position.x -= 1;
 	    buffer_backspace(buffer);
         } break;
 
@@ -395,15 +394,15 @@ handle_input(Editor *editor, Window *window, s16 key_code)
         {
 	    if (key_code == '\r')
 	    {
-	    	window->cursor_position.x = 0;
-	    	window->cursor_position.y += 1;
-	    	buffer_insert_string(buffer, TERM_CLEAR_RIGHT);
+		// TODO: do anything on CR?
+	    }
+	    else if (key_code == '\n')
+	    {
 	    	buffer_insert_newline(buffer);
 	    }
 	    else
 	    {
 		buffer_insert(buffer, key_code);
-		window->cursor_position.x += 1;
 	    }
 	}
     }
@@ -411,19 +410,16 @@ handle_input(Editor *editor, Window *window, s16 key_code)
 
 int main(s32 argc, char *argv[])
 {
-    #if 1
+#if 1
     terminal = create_terminal();
     terminal->original_position = get_cursor_position(STDIN_FILENO, STDOUT_FILENO);
 
     Editor *editor = &terminal->editor;
     editor->mode = EditorMode_Insert;
 
-    #if 1
     setup_sigwatch(terminal);
-    #endif 
 
     // Loading file
-    #if 1
     Window *active_window = editor->windows + editor->active_window;
     buffer_initialize(&active_window->buffer);
 
@@ -431,38 +427,36 @@ int main(s32 argc, char *argv[])
     {
 	editor_open_file(&active_window->buffer, argv[1]);
     }
-    #endif
 
     b32 running = true;
     while (running)
     {
 	active_window = editor->windows + editor->active_window;
-	move_cursor_to(active_window->cursor_position.x, active_window->cursor_position.y);
+	Buffer *active_buffer = &active_window->buffer;
+	move_cursor_to(active_buffer->cursor_position.x, active_buffer->cursor_position.y);
 
 	// -- Render
 	// ----------------------------------
 	
 	// NOTE: status line
-#if 1
 	// TODO: move this to the editor not the presentation layer
 	Position pos = {};
 	char tmp[1024];
 	sprintf(tmp, "[-%s-][%s][(%i, %i)]",
 		mode_to_string(editor->mode), 
 		active_window->buffer.filename,
-		active_window->cursor_position.x, active_window->cursor_position.y);
+		active_buffer->cursor_position.x, active_buffer->cursor_position.y);
 
 	move_cursor_to(0, terminal->max_row_count-1);
 	printf("%s%s", "\x1b[43m", TERM_CLEAR_RIGHT); // yello background and clear right
 	printf("%s", tmp);
 	printf(TERM_COLOR_RESET); // reset color
 	printf(TERM_MOVE_CURSOR_HOME);
-#endif
 
 	// render state
 	render(editor->window_count, editor->windows);
-	 
 	fflush(stdout);
+
 	// NOTE: end rendering
 
 	// ----------------------------------
@@ -475,15 +469,6 @@ int main(s32 argc, char *argv[])
 	if (key_code == CTRL('Q')) running = false;
 	
 	handle_input(editor, active_window, key_code);
-	#if 0
-	switch (editor->mode)
-	{
-	    // TODO remove 'terminal' from these api calls
-	    case EditorMode_Normal: { handle_input_normal_mode(editor, active_window, key_code); } break;
-	    case EditorMode_Insert: { handle_input_insert_mode(editor, active_window, key_code); } break;
-	}
-	#endif
-	
     }
     
     terminal_close(terminal, STDIN_FILENO);
@@ -503,8 +488,7 @@ int main(s32 argc, char *argv[])
 	buffer_write(buffer, stdout);
 	printf("\n");
     }
-
-    #endif
+#endif
 
     return 0;
 }

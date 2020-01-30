@@ -1,4 +1,170 @@
-#if 1
+#define LINE_DEFAULT_INITIAL_SIZE 64
+
+internal Line*
+make_line(u64 size)
+{
+    Line *result = malloc(sizeof(Line));
+    result->next = 0;
+    result->prev = 0;
+    result->size_used = 0;
+    result->size_allocated = size;
+    result->text = malloc(size);
+    return result;
+}
+
+// Inserting text
+// -----------------------------------------------
+internal void // TODO: should we return 'true' or 'false'
+buffer_insert(Buffer *b, s32 c)
+{
+    Line *row = b->line_cursor;
+    s32 at = b->cursor_position.x;
+
+    if (at > row->size_used) {
+        /* Pad the string with spaces if the insert location is outside the
+         * current length by more than a single character. */
+        int padlen = at-row->size_used;
+
+        /* In the next line +2 means: new char and null term. */
+        row->text = realloc(row->text,row->size_used+padlen+2);
+        memset(row->text+row->size_used,' ',padlen);
+        row->text[row->size_used+padlen+1] = '\0';
+        row->size_used += padlen+1;
+    }
+    else
+    {
+        /* If we are in the middle of the string just make space for 1 new
+         * char plus the (already existing) null term. */
+        row->text = realloc(row->text,row->size_used+2);
+        memmove(row->text+at+1,row->text+at,row->size_used-at+1);
+        row->size_used++;
+    }
+
+    
+    s32 index = b->cursor_position.x++;
+    row->text[index] = c;
+}
+
+internal void
+buffer_insert_string(Buffer *b, char *s)
+{
+    // TODO make more efficient
+    s32 len = strlen(s);
+    for (s32 index = 0;
+	 index < len;
+	 ++index)
+    {
+	buffer_insert(b, s[index]);
+    }
+}
+
+
+internal void
+buffer_insert_newline(Buffer *b)
+{
+    buffer_insert(b, '\n');
+    Line *newline = make_line(LINE_DEFAULT_INITIAL_SIZE);
+
+    Line *old_newline = b->line_cursor->next;
+    b->line_cursor->next = newline;
+
+    newline->next = old_newline;
+    newline->prev = b->line_cursor;
+
+    if (old_newline)
+    {
+	old_newline->prev = newline;
+    }
+     
+    b->line_cursor = newline;
+    b->cursor_position.x = 0;
+    b->cursor_position.y += 1;
+}
+
+// Removing Text
+// -----------------------------------------------
+internal void
+buffer_delete(Buffer *b)
+{
+}
+
+internal void
+buffer_backspace(Buffer *b)
+{
+    Line *row = b->line_cursor;
+    s32 at = b->cursor_position.x - 1;
+
+    if (at < 0)
+    {
+	// TODO: move the row to the previous row and delete this one
+    }
+
+    // if the cursor is placed beyond the actual end of line
+    if (row->size_used <= at) return;
+
+    memmove(row->text + at, row->text + at + 1, row->size_used - at);
+    row->size_used--;
+    b->cursor_position.x -= 1;
+}
+
+// Moving Around Text
+// -----------------------------------------------
+internal void
+buffer_backward(Buffer *b)
+{
+}
+
+internal void
+buffer_forward(Buffer *b)
+{
+}
+
+internal void
+buffer_move_to_beginning(Buffer *b)
+{
+}
+
+// Initialization / Destruction
+// -----------------------------------------------
+
+internal void
+buffer_initialize(Buffer *b)
+{
+    Line *header = make_line(LINE_DEFAULT_INITIAL_SIZE);
+    b->line_header = header;
+    b->line_cursor = header;
+}
+
+internal void
+buffer_initialize_with_text(Buffer *b, char* text)
+{
+}
+
+internal void
+buffer_release(Buffer *b)
+{
+}
+
+internal void
+buffer_write(Buffer *b, FILE *out)
+{
+    Line *current_line = b->line_header;
+
+    while (current_line)
+    {
+	// TODO while current_line != 0;
+	u64 len = current_line->size_used;
+	fwrite(current_line->text, 1, len, out);
+	current_line = current_line->next;
+
+	// char *back_start = b->text + b->front + b->gap;
+	// u64 back_len = b->total - b->front - b->gap;
+
+	// fwrite(b->text, 1, b->front, out);    // render before the gap
+	// fwrite(back_start, 1, back_len, out); // render after the gap
+    }
+}
+#if 0
 #define BUFFER_INITIAL_GAP 1024
 
 // Inserting text
@@ -126,6 +292,16 @@ buffer_release(Buffer *b)
     free(b->text);
     b->text = 0;
 }
+
+internal void
+buffer_write(Buffer *b, FILE *out)
+{
+    char *back_start = b->text + b->front + b->gap;
+    u64 back_len = b->total - b->front - b->gap;
+
+    fwrite(b->text, 1, b->front, out);    // render before the gap
+    fwrite(back_start, 1, back_len, out); // render after the gap
+}
 #endif
 
 #if 0
@@ -198,12 +374,3 @@ buffer_down(Buffer *b)
 }
 #endif
 
-internal void
-buffer_write(Buffer *b, FILE *out)
-{
-    char *back_start = b->text + b->front + b->gap;
-    u64 back_len = b->total - b->front - b->gap;
-
-    fwrite(b->text, 1, b->front, out);    // render before the gap
-    fwrite(back_start, 1, back_len, out); // render after the gap
-}

@@ -2,6 +2,7 @@
 
 # MAIN_FILE=key_code_test.c
 MAIN_FILE=osx_main_terminal.c
+# MAIN_FILE=test_file.c
 EXE_NAME=ced
 
 CTIME_EXEC="ctime/ctime"
