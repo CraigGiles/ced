@@ -231,32 +231,9 @@ get_key(s32 fd)
     }
 }
 
-internal Terminal*
-create_terminal(s32 argc, char* argv[])
+internal void
+initialize_terminal(Terminal *result, s32 argc, char* argv[])
 {
-    Terminal *result = malloc(sizeof(Terminal));
-    result->max_row_count = 0;
-    result->max_column_count = 0;
-    result->original_position.x = 0;
-    result->original_position.y = 0;
-    result->rawmode = false;
-
-    result->editor.mode = EditorMode_Insert;
-    result->editor.window_count = 0;
-    result->editor.active_window = 0;
-
-    for (s32 window_index = 0;
-	 window_index < MAX_WINDOW_COUNT;
-	 ++window_index)
-    {
-	Window *w = result->editor.windows + window_index;
-	
-	w->flags = 0;
-	w->buffer.line_count = 0;
-	w->buffer.cursor_index = 0;
-	w->buffer.lines = 0;
-    }
-
     terminal_open(result, STDIN_FILENO);
     get_terminal_dimensions(STDIN_FILENO, STDOUT_FILENO, &result->max_row_count, &result->max_column_count);
     atexit(terminal_close_all);
@@ -268,8 +245,6 @@ create_terminal(s32 argc, char* argv[])
 
     ed->windows[0].buffer.line_count = 0;
     buffer_initialize(&ed->windows[0].buffer, "*scratch*");
-
-    return result;
 }
 
 internal void
@@ -385,7 +360,7 @@ handle_input(Editor *editor, Window *window, s16 key_code)
 
         case BACKSPACE:
         {
-	    // buffer_backspace(buffer);
+	    buffer_backspace(buffer);
         } break;
 
 	case CTRL('H'): // left
@@ -416,7 +391,10 @@ handle_input(Editor *editor, Window *window, s16 key_code)
 
 int main(s32 argc, char *argv[])
 {
-    terminal = create_terminal(argc, argv);
+    Terminal t = {};
+    terminal = &t;
+
+    initialize_terminal(terminal, argc, argv);
     terminal->original_position = get_cursor_position(STDIN_FILENO, STDOUT_FILENO);
     setup_sigwatch(terminal);
 
