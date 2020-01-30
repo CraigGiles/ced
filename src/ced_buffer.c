@@ -1,6 +1,8 @@
+
 internal void
 buffer_insert_line(Buffer *b, s32 index, char *text, s32 len)
 {
+    #if 0
     // appending a new line to the buffer
     Line *tmp = realloc(b->lines, sizeof(Line) * b->line_count + 1);
     if (!tmp)
@@ -12,11 +14,13 @@ buffer_insert_line(Buffer *b, s32 index, char *text, s32 len)
 	b->lines = tmp;
 	b->line_count++;
 	b->lines[index].text = malloc(len + 1);
+	b->lines[index].used = 0;
 	memcpy(b->lines[index].text, text, len + 1);
 	b->lines[index].index = index;
     }
+    #endif
 
-    #if 0
+    #if 1
     if (index <= b->line_count)
     {
 	if (index != b->line_count)
@@ -33,6 +37,7 @@ buffer_insert_line(Buffer *b, s32 index, char *text, s32 len)
 	b->lines = realloc(b->lines, sizeof(Line) * b->line_count + 1);
 	b->line_count++;
 
+	b->lines[index].used = 0;
 	b->lines[index].length = len;
 	b->lines[index].text = malloc(len + 1);
 	memcpy(b->lines[index].text, text, len + 1);
@@ -88,9 +93,27 @@ buffer_insert(Buffer *b, s32 c)
 internal void
 buffer_insert_newline(Buffer *b)
 {
+#if 0
+    b->lines = realloc(b->lines, sizeof(Line) * b->line_count + 1);
     b->cursor_row++;
     b->cursor_index = 0;
-    buffer_insert_line(b, b->cursor_row, "", 0);
+
+    s32 index = b->cursor_row;
+
+    // Lat thing i did was add this line here to maybe stop the crashing
+    // currently i'm testing dding new lines to the file
+    b->lines[index].used = 0;
+    // b->line_count++;
+    // b->lines[index].text = strdup("");
+    // b->lines[index].index = index;
+#endif
+
+    #if 1
+    buffer_insert_line(b, b->cursor_row + 1, "", 1);
+    b->cursor_row++;
+    b->cursor_index = 0;
+    #endif
+
 #if 0
     int fileline = b->cursor_row;
     int filecol = b->cursor_index;

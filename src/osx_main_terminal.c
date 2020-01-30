@@ -262,6 +262,7 @@ render(s32 window_count, Window *windows)
 	Buffer *buffer = &w->buffer;
 
 	// TODO render only the visible portion of the buffer
+	// TODO: the rendering is the thing that is screwed up at this point
 	s32 line_start = 0;
 	s32 line_end   = buffer->line_count;
 	for (s32 line_index = line_start;
@@ -271,6 +272,7 @@ render(s32 window_count, Window *windows)
 	    Line *line = buffer->lines + line_index;
 	    fwrite(line->text, 1, line->used, stdout);
 	    write(STDOUT_FILENO, TERM_CLEAR_RIGHT, 3);     // clear the rest of the line
+	    printf("\n");
 	}
     }
 
@@ -373,13 +375,14 @@ handle_input(Editor *editor, Window *window, s16 key_code)
 
 	case CTRL('L'): // right
 	{
+	    buffer_insert_newline(buffer);
 	} break;
 
         default:
         {
 	    if (key_code == '\r')
 	    {
-		// TODO: do anything on CR?
+	    	buffer_insert_newline(buffer);
 	    }
 	    else if (key_code == '\n')
 	    {
@@ -422,7 +425,7 @@ int main(s32 argc, char *argv[])
 	sprintf(tmp, "[-%s-][%s][(%i, %i)]",
 		mode_to_string(editor->mode), 
 		active_window->buffer.name,
-		0, active_buffer->cursor_index);
+		active_buffer->cursor_row, active_buffer->cursor_index);
 		// active_buffer->cursor_position.x, active_buffer->cursor_position.y);
 
 	move_cursor_to(0, terminal->max_row_count-1);
@@ -458,7 +461,19 @@ int main(s32 argc, char *argv[])
 
     s32 window_count = editor->window_count;
     Window *windows = editor->windows;
+    Buffer *b = &windows[0].buffer;
 
+    s32 line_start = 0;
+    s32 line_end   = b->line_count;
+    for (s32 line_index = line_start;
+	 line_index < line_end;
+	 ++line_index)
+    {
+	Line *line = b->lines + line_index;
+	printf("%s\n", line->text);
+    }
+
+    #if 0
     for (s32 window_index = 0;
 	 window_index < window_count;
 	 ++window_index)
@@ -469,6 +484,7 @@ int main(s32 argc, char *argv[])
 	printf("%s", buffer->lines[0].text);  // TODO -- temp
 	printf("\n");
     }
+    #endif
 #endif
 
     return 0;

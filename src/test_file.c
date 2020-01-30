@@ -11,7 +11,7 @@ int main()
     buffer_insert(&b, 'l');
     buffer_insert(&b, 'l');
     buffer_insert(&b, 'o');
-    buffer_insert(&b, ' ');
+    buffer_insert_newline(&b);
     buffer_insert(&b, 's');
     buffer_insert(&b, 'a');
     buffer_insert(&b, 'i');
@@ -21,7 +21,6 @@ int main()
     // buffer_insert_string(&b, "Hello Sailor");
     buffer_backspace(&b);
     buffer_backspace(&b);
-    buffer_insert_newline(&b);
     buffer_insert(&b, 'b');
     buffer_insert(&b, 'o');
     buffer_insert(&b, 'a');
