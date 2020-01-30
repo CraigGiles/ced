@@ -1,3 +1,90 @@
+internal void
+buffer_insert_line(Buffer *b, s32 index, char *text, s32 len)
+{
+    if (index <= b->line_count)
+    {
+	if (index != b->line_count)
+	{
+	    memmove(b->lines + index + 1,b->lines + index, sizeof(b->lines[0]) * (b->line_count - index));
+	    for (s32 j = index + 1;
+		 j <= b->line_count;
+		 j++)
+	    {
+		b->lines[j].index++;
+	    }
+	}
+	
+	b->lines = realloc(b->lines, sizeof(Line) * b->line_count + 1);
+	b->line_count++;
+
+	b->lines[index].size = len;
+	b->lines[index].text = malloc(len + 1);
+	memcpy(b->lines[index].text, text, len + 1);
+	b->lines[index].index = index;
+    }
+}
+
+internal void
+buffer_initialize(Buffer *b, char *name)
+{
+    s32 len = strlen(name);
+    len = (len < BUFFER_NAME_SIZE) ? len : BUFFER_NAME_SIZE;
+    strncpy(b->name, name, len);
+
+    buffer_insert_line(b, 0, "", 1);
+}
+
+internal void // TODO: should we return 'true' or 'false'
+buffer_insert(Buffer *b, s32 c)
+{
+    Line *row = b->lines + b->cursor_row;
+    s32 at = b->cursor_index;
+
+    if (at > row->used) {
+        /* Pad the string with spaces if the insert location is outside the
+         * current length by more than a single character. */
+        int padlen = at - row->used;
+
+        /* In the next line +2 means: new char and null term. */
+        row->text = realloc(row->text, row->used+padlen+2);
+        memset(row->text + row->used, ' ', padlen);
+        row->text[row->used + padlen + 1] = '\0';
+        row->used += padlen + 1;
+    }
+    else
+    {
+        /* If we are in the middle of the string just make space for 1 new
+         * char plus the (already existing) null term. */
+        row->text = realloc(row->text, row->used + 2);
+        memmove(row->text + at + 1, row->text + at, row->used - at + 1);
+        row->used++;
+    }
+
+    
+    s32 index = b->cursor_index++;
+    row->text[index] = c;
+}
+
+internal void
+buffer_backspace(Buffer *b)
+{
+    Line *row = b->lines + b->cursor_row;
+    s32 at = b->cursor_index - 1;
+
+    if (at < 0)
+    {
+	// TODO: move the row to the previous row and delete this one
+    }
+
+    // if the cursor is placed beyond the actual end of line
+    if (row->used <= at) return;
+
+    memmove(row->text + at, row->text + at + 1, row->used - at);
+    row->used--;
+    b->cursor_index -= 1;
+}
+
+#if 0
 #define LINE_DEFAULT_INITIAL_SIZE 64
 
 internal Line*
@@ -14,37 +101,6 @@ make_line(u64 size)
 
 // Inserting text
 // -----------------------------------------------
-internal void // TODO: should we return 'true' or 'false'
-buffer_insert(Buffer *b, s32 c)
-{
-    Line *row = b->line_cursor;
-    s32 at = b->cursor_position.x;
-
-    if (at > row->size_used) {
-        /* Pad the string with spaces if the insert location is outside the
-         * current length by more than a single character. */
-        int padlen = at-row->size_used;
-
-        /* In the next line +2 means: new char and null term. */
-        row->text = realloc(row->text,row->size_used+padlen+2);
-        memset(row->text+row->size_used,' ',padlen);
-        row->text[row->size_used+padlen+1] = '\0';
-        row->size_used += padlen+1;
-    }
-    else
-    {
-        /* If we are in the middle of the string just make space for 1 new
-         * char plus the (already existing) null term. */
-        row->text = realloc(row->text,row->size_used+2);
-        memmove(row->text+at+1,row->text+at,row->size_used-at+1);
-        row->size_used++;
-    }
-
-    
-    s32 index = b->cursor_position.x++;
-    row->text[index] = c;
-}
-
 internal void
 buffer_insert_string(Buffer *b, char *s)
 {
@@ -164,6 +220,8 @@ buffer_write(Buffer *b, FILE *out)
 	// fwrite(back_start, 1, back_len, out); // render after the gap
     }
 }
+#endif
+
 #if 0
 #define BUFFER_INITIAL_GAP 1024
 

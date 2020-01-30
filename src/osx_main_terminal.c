@@ -2,6 +2,11 @@
 
 #include "ced.c"
 
+global_variable Terminal *terminal;
+global_variable struct termios orig_termios;   /* In order to restore at exit.*/
+global_variable struct termios raw_state;      /* values for editor mode */
+
+#if 0
 internal void
 editor_open_file(Buffer *buffer, char *filename)
 {
@@ -30,7 +35,7 @@ editor_open_file(Buffer *buffer, char *filename)
     strncpy(buffer->filename, filename, MAX_BUFFER_NAME); // TODO: ensure we're only copying filename
     buffer_move_to_beginning(buffer);
 }
-
+#endif
 
 internal void
 move_cursor_to(s32 x, s32 y)
@@ -40,16 +45,11 @@ move_cursor_to(s32 x, s32 y)
     printf("%s", tmp);
 }
 
-global_variable Terminal *terminal;
-global_variable struct termios orig_termios;   /* In order to restore at exit.*/
-global_variable struct termios raw_state;      /* values for editor mode */
-
-#if 1
 internal Position
 get_cursor_position(int ifd, int ofd)
 {
     Position result = {};
-#if 0
+
     char buf[32];
     unsigned int i = 0;
     int rows;
@@ -71,10 +71,23 @@ get_cursor_position(int ifd, int ofd)
 
     result.y = rows - 1;
     result.x = cols - 1;
-#endif
+
     return result;
 }
-#endif
+
+internal void
+get_terminal_dimensions(s32 infile, s32 outfile, s32 *rows, s32 *columns)
+{
+    struct winsize ws;
+
+    s32 err = ioctl(1, TIOCGWINSZ, &ws);
+
+    if (err != -1 && ws.ws_col != 0)
+    {
+        *rows = ws.ws_row;
+        *columns = ws.ws_col;
+    }
+}
 
 internal void
 terminal_open(Terminal *term, int fd)
@@ -103,11 +116,10 @@ terminal_open(Terminal *term, int fd)
         // NOTE: this following part actually causes the input to be
         //   read in a loop rather than waiting for the character to
         //   be typed.
-        #if 1
+
         /* control chars - set return condition: min number of bytes and timer. */
         raw_state.c_cc[VMIN] = 0;    /* Return each byte, or zero for timeout. */
         raw_state.c_cc[VTIME] = 1;   /* 100 ms timeout (unit is tens of second). */
-        #endif
 
         /* put terminal in raw mode after flushing */
         tcsetattr(fd, TCSAFLUSH, &raw_state); 
@@ -128,20 +140,6 @@ terminal_close(Terminal *term, s32 fd)
 void terminal_close_all()
 {
     terminal_close(terminal, STDIN_FILENO);
-}
-
-internal void
-get_terminal_dimensions(s32 infile, s32 outfile, s32 *rows, s32 *columns)
-{
-    struct winsize ws;
-
-    s32 err = ioctl(1, TIOCGWINSZ, &ws);
-
-    if (err != -1 && ws.ws_col != 0)
-    {
-        *rows = ws.ws_row;
-        *columns = ws.ws_col;
-    }
 }
 
 internal s16
@@ -234,17 +232,42 @@ get_key(s32 fd)
 }
 
 internal Terminal*
-create_terminal()
+create_terminal(s32 argc, char* argv[])
 {
     Terminal *result = malloc(sizeof(Terminal));
+    result->max_row_count = 0;
+    result->max_column_count = 0;
+    result->original_position.x = 0;
+    result->original_position.y = 0;
+    result->rawmode = false;
+
+    result->editor.mode = EditorMode_Insert;
+    result->editor.window_count = 0;
+    result->editor.active_window = 0;
+
+    for (s32 window_index = 0;
+	 window_index < MAX_WINDOW_COUNT;
+	 ++window_index)
+    {
+	Window *w = result->editor.windows + window_index;
+	
+	w->flags = 0;
+	w->buffer.line_count = 0;
+	w->buffer.cursor_index = 0;
+	w->buffer.lines = 0;
+    }
 
     terminal_open(result, STDIN_FILENO);
     get_terminal_dimensions(STDIN_FILENO, STDOUT_FILENO, &result->max_row_count, &result->max_column_count);
     atexit(terminal_close_all);
 
     Editor *ed = &result->editor;
-
     ed->window_count = 1;
+
+    // TODO if argc > 1 load file
+
+    ed->windows[0].buffer.line_count = 0;
+    buffer_initialize(&ed->windows[0].buffer, "*scratch*");
 
     return result;
 }
@@ -252,10 +275,9 @@ create_terminal()
 internal void
 render(s32 window_count, Window *windows)
 {
-    // write(STDOUT_FILENO, display.contents, display.length);
-    write(STDOUT_FILENO, TERM_CLEAR_SCREEN, 2);     /* clear screen */
-    write(STDOUT_FILENO, TERM_HIDE_CURSOR, 6);      /* Hide cursor. */
-    write(STDOUT_FILENO, TERM_MOVE_CURSOR_HOME, 3); /* Go home. */
+    write(STDOUT_FILENO, TERM_CLEAR_SCREEN, 2);        // clear screen
+    write(STDOUT_FILENO, TERM_HIDE_CURSOR, 6);         // Hide cursor.
+    write(STDOUT_FILENO, TERM_MOVE_CURSOR_HOME, 3);    // Go home.
 
     for (s32 window_index = 0;
 	 window_index < window_count;
@@ -263,20 +285,18 @@ render(s32 window_count, Window *windows)
     {
 	Window *w = windows + window_index;
 	Buffer *buffer = &w->buffer;
+	#if 0
 	Position pos = buffer->cursor_position;
 
-	#if 1
 	buffer_write(buffer, stdout);
-	write(STDOUT_FILENO, TERM_CLEAR_RIGHT, 3); // clear the rest of the line
-	#endif
-
-	// TODO: get all the 'lines' in the buffer
+	write(STDOUT_FILENO, TERM_CLEAR_RIGHT, 3);     // clear the rest of the line
 
 	move_cursor_to(pos.x, pos.y);
+	#endif
     }
 
-    write(STDOUT_FILENO, TERM_SHOW_CURSOR, 6); /* Show cursor. */
-    write(STDOUT_FILENO, TERM_CLEAR_RIGHT, 3); // clear the rest of the line
+    write(STDOUT_FILENO, TERM_SHOW_CURSOR, 6);         // Show cursor.
+    write(STDOUT_FILENO, TERM_CLEAR_RIGHT, 3);         // clear the rest of the line
 }
 
 global_variable Terminal *term;
@@ -307,7 +327,7 @@ setup_sigwatch(Terminal *terminal)
 
 #include <errno.h>
 
-#if 1
+#if 0
 /* Load the specified program in the editor memory and returns 0 on success
  * or 1 on error. */
 Position editor_open(Buffer *buffer, char *filename)
@@ -335,9 +355,11 @@ Position editor_open(Buffer *buffer, char *filename)
         if (linelen && (line[linelen-1] == '\n' || line[linelen-1] == '\r'))
 	{
 	    line[--linelen] = '\0';
+	    #if 0
 	    buffer_insert_string(buffer, line);
 	    buffer_insert_string(buffer, "\r\n");
 	    buffer_insert_string(buffer, TERM_CLEAR_RIGHT);
+	    #endif
 	}
 
     }
@@ -348,20 +370,6 @@ Position editor_open(Buffer *buffer, char *filename)
     return pos;
 }
 #endif
-
-internal void
-move_left(Window *window)
-{
-    Buffer *buffer = &window->buffer;
-    buffer_backward(buffer);
-}
-
-internal void
-move_right(Window *window)
-{
-    Buffer *buffer = &window->buffer;
-    buffer_forward(buffer);
-}
 
 internal void
 handle_input(Editor *editor, Window *window, s16 key_code)
@@ -377,17 +385,15 @@ handle_input(Editor *editor, Window *window, s16 key_code)
 
         case BACKSPACE:
         {
-	    buffer_backspace(buffer);
+	    // buffer_backspace(buffer);
         } break;
 
 	case CTRL('H'): // left
 	{
-	    move_left(window);
 	} break;
 
 	case CTRL('L'): // right
 	{
-	    move_right(window);
 	} break;
 
         default:
@@ -398,7 +404,7 @@ handle_input(Editor *editor, Window *window, s16 key_code)
 	    }
 	    else if (key_code == '\n')
 	    {
-	    	buffer_insert_newline(buffer);
+	    	// buffer_insert_newline(buffer);
 	    }
 	    else
 	    {
@@ -410,48 +416,39 @@ handle_input(Editor *editor, Window *window, s16 key_code)
 
 int main(s32 argc, char *argv[])
 {
-#if 1
-    terminal = create_terminal();
+    terminal = create_terminal(argc, argv);
     terminal->original_position = get_cursor_position(STDIN_FILENO, STDOUT_FILENO);
-
-    Editor *editor = &terminal->editor;
-    editor->mode = EditorMode_Insert;
-
     setup_sigwatch(terminal);
 
-    // Loading file
+    Editor *editor = &terminal->editor;
     Window *active_window = editor->windows + editor->active_window;
-    buffer_initialize(&active_window->buffer);
-
-    if (argc > 1)
-    {
-	editor_open_file(&active_window->buffer, argv[1]);
-    }
 
     b32 running = true;
     while (running)
     {
 	active_window = editor->windows + editor->active_window;
 	Buffer *active_buffer = &active_window->buffer;
-	move_cursor_to(active_buffer->cursor_position.x, active_buffer->cursor_position.y);
 
 	// -- Render
 	// ----------------------------------
 	
 	// NOTE: status line
 	// TODO: move this to the editor not the presentation layer
+#if 1
 	Position pos = {};
 	char tmp[1024];
 	sprintf(tmp, "[-%s-][%s][(%i, %i)]",
 		mode_to_string(editor->mode), 
-		active_window->buffer.filename,
-		active_buffer->cursor_position.x, active_buffer->cursor_position.y);
+		active_window->buffer.name,
+		0, active_buffer->cursor_index);
+		// active_buffer->cursor_position.x, active_buffer->cursor_position.y);
 
 	move_cursor_to(0, terminal->max_row_count-1);
 	printf("%s%s", "\x1b[43m", TERM_CLEAR_RIGHT); // yello background and clear right
 	printf("%s", tmp);
 	printf(TERM_COLOR_RESET); // reset color
 	printf(TERM_MOVE_CURSOR_HOME);
+#endif
 
 	// render state
 	render(editor->window_count, editor->windows);
@@ -473,10 +470,12 @@ int main(s32 argc, char *argv[])
     
     terminal_close(terminal, STDIN_FILENO);
 
-    printf("\n--------------------------------------\n -- Final Buffer Contents:\n");
+#if 1
+    printf("\n--------------------------------------\n");
+    printf(" -- Final Buffer Contents:\n\n");
+
     s32 window_count = editor->window_count;
     Window *windows = editor->windows;
-
 
     for (s32 window_index = 0;
 	 window_index < window_count;
@@ -485,7 +484,8 @@ int main(s32 argc, char *argv[])
 	Window *w = windows + window_index;
 	Buffer *buffer = &w->buffer;
 
-	buffer_write(buffer, stdout);
+	printf("%s", buffer->lines[0].text);  // TODO -- temp
+	// buffer_write(buffer, stdout);
 	printf("\n");
     }
 #endif

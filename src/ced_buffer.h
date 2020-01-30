@@ -2,32 +2,22 @@
 
 #define CED_BUFFER_H
 
-typedef struct Line {
-    struct Line *next;
-    struct Line *prev;
-    s32 size_allocated;
-    s32 size_used;
-    char* text;
-} Line;
+#define BUFFER_NAME_SIZE 80
 
-#define MAX_BUFFER_NAME 64
 typedef struct {
-    char filename[MAX_BUFFER_NAME]; // File being edited
-    Line *line_cursor;              // Link to the line which the cursor rests on
-    Line *line_header;              // Link to the header line for this buffer
-    Position cursor_position;
-} Buffer;
-
-#if 0
-// NOTE: this is here mainly for documentation on what i had done before
-typedef struct {
-    char *filename;
+    s32 index;
+    s16 size;
+    s16 used;
     char *text;
-    u64 total;                          /* total size of buffer */
-    u64 front;                          /* size of content before cursor */
-    u64 gap;                            /* size of the gap */
+} Line;
+    
+typedef struct {
+    s32 line_count;
+    s32 cursor_index;
+    s32 cursor_row;
+    Line *lines;
+    char name[BUFFER_NAME_SIZE];
+    char file[BUFFER_NAME_SIZE];
 } Buffer;
-#endif
-
 
 #endif
