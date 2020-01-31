@@ -378,6 +378,16 @@ handle_input(Editor *editor, Window *window, s16 key_code)
 	    buffer_backspace(buffer);
         } break;
 
+	case ARROW_UP:
+	{
+	    buffer_up(buffer, 1);
+	} break;
+
+	case ARROW_DOWN:
+	{
+	    buffer_down(buffer, 1);
+	} break;
+
 	case ARROW_LEFT:
 	case CTRL('H'): // left
 	{

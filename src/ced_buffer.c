@@ -69,7 +69,6 @@ buffer_insert(Buffer *b, s32 c)
         memmove(row->text + at + 1, row->text + at, row->length - at + 1);
         row->length++;
     }
-
     
     s32 index = b->cursor_index++;
     row->text[index] = c;
@@ -84,7 +83,8 @@ buffer_insert_newline(Buffer *b)
 
     if (!line) // cursor is past the end of editable text
     {
-	// TODO
+	// TODO cursor is past the end of editable text.. allow it?
+	return;
     }
 
     if (line && current_col < line->length)
@@ -178,3 +178,40 @@ buffer_forwards(Buffer *b)
     }
 }
 
+internal void
+buffer_up(Buffer *b, s32 count)
+{
+    if (b->cursor_row > count)
+    {
+	b->cursor_row -= count;
+    }
+    else
+    {
+	b->cursor_row = 0;
+    }
+
+    Line *line = b->lines + b->cursor_row;
+    if (b->cursor_index > line->length)
+    {
+	b->cursor_index = line->length;
+    }
+}
+
+internal void
+buffer_down(Buffer *b, s32 count)
+{
+    if (b->cursor_row + count > b->line_count-1)
+    {
+	b->cursor_row = b->line_count - 1;
+    }
+    else
+    {
+	b->cursor_row += count;
+    }
+
+    Line *line = b->lines + b->cursor_row;
+    if (b->cursor_index > line->length)
+    {
+	b->cursor_index = line->length;
+    }
+}
