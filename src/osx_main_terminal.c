@@ -262,17 +262,16 @@ render(s32 window_count, Window *windows)
 	Buffer *buffer = &w->buffer;
 
 	// TODO render only the visible portion of the buffer
-	// TODO: the rendering is the thing that is screwed up at this point
 	s32 line_start = 0;
 	s32 line_end   = buffer->line_count;
 	for (s32 line_index = line_start;
 	     line_index < line_end;
 	     ++line_index)
 	{
+	    move_cursor_to(0, line_index);
 	    Line *line = buffer->lines + line_index;
 	    fwrite(line->text, 1, line->used, stdout);
 	    write(STDOUT_FILENO, TERM_CLEAR_RIGHT, 3);     // clear the rest of the line
-	    printf("\n");
 	}
     }
 
@@ -457,7 +456,8 @@ int main(s32 argc, char *argv[])
 
 #if 1
     printf("\n--------------------------------------\n");
-    printf(" -- Final Buffer Contents:\n\n");
+    printf(" -- Final Buffer Contents:\n");
+    printf("--------------------------------------\n");
 
     s32 window_count = editor->window_count;
     Window *windows = editor->windows;
