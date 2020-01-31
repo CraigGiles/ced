@@ -2,15 +2,21 @@
 
 #define CED_BUFFER_H
 
-#if 1
-typedef struct {
-    char *filename;
-    char *text;
-    u64 total;                          /* total size of buffer */
-    u64 front;                          /* size of content before cursor */
-    u64 gap;                            /* size of the gap */
-} Buffer;
-#endif
+#define BUFFER_NAME_SIZE 80
 
+typedef struct {
+    s32 index;
+    s16 length;
+    char *text;
+} Line;
+    
+typedef struct {
+    s32 line_count;
+    s32 cursor_index;
+    s32 cursor_row;
+    Line *lines;
+    char name[BUFFER_NAME_SIZE];
+    char file[BUFFER_NAME_SIZE];
+} Buffer;
 
 #endif

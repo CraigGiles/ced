@@ -16,6 +16,10 @@
 #include <stdarg.h>
 #include <stddef.h>
 
+typedef struct {
+    s32 x;
+    s32 y;
+} Position;
 
 #include "ced_buffer.h"
 
@@ -30,14 +34,8 @@ typedef enum {
 } EditorMode;
 
 typedef struct {
-    s32 x;
-    s32 y;
-} Position;
-
-typedef struct {
     u8 flags;
     Buffer buffer;
-    Position cursor_position;
 } Window;
 
 typedef struct {
