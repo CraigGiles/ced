@@ -1,26 +1,8 @@
 
-internal void
+internal Line*
 buffer_insert_line(Buffer *b, s32 index, char *text, s32 len)
 {
-    #if 0
-    // appending a new line to the buffer
-    Line *tmp = realloc(b->lines, sizeof(Line) * b->line_count + 1);
-    if (!tmp)
-    {
-	// TODO: Could not allocate new line
-    }
-    else
-    {
-	b->lines = tmp;
-	b->line_count++;
-	b->lines[index].text = malloc(len + 1);
-	b->lines[index].used = 0;
-	memcpy(b->lines[index].text, text, len + 1);
-	b->lines[index].index = index;
-    }
-    #endif
-
-#if 1
+    Line *result = 0;
     if (index <= b->line_count)
     {
 	if (index != b->line_count)
@@ -37,12 +19,15 @@ buffer_insert_line(Buffer *b, s32 index, char *text, s32 len)
 	b->lines = realloc(b->lines, sizeof(Line) * b->line_count + 1);
 	b->line_count++;
 
-	b->lines[index].length = len;
-	b->lines[index].text = malloc(len + 1);
-	memcpy(b->lines[index].text, text, len + 1);
-	b->lines[index].index = index;
+	result = &b->lines[index];
+	result->length = len;
+	result->text = malloc(len + 1);
+	result->index = index;
+	memcpy(result->text, text, len + 1);
+	b->lines[index].index;
     }
-#endif
+
+    return result;
 }
 
 internal void
@@ -52,7 +37,8 @@ buffer_initialize(Buffer *b, char *name)
     len = (len < BUFFER_NAME_SIZE) ? len : BUFFER_NAME_SIZE;
     strncpy(b->name, name, len);
 
-    buffer_insert_line(b, 0, "", 0);
+    Line *l = buffer_insert_line(b, 0, "", 1);
+    l->text[0] = '\0';
 
     b->cursor_row = 0;
     b->cursor_index = 0;
@@ -126,7 +112,8 @@ buffer_insert_newline(Buffer *b)
     }
     else
     {
-	buffer_insert_line(b, b->cursor_row + 1, "", 0);
+	Line *l = buffer_insert_line(b, b->cursor_row + 1, "", 1);
+	l->text[0] = '\0';
 	b->cursor_row++;
 	b->cursor_index = 0;
     }
@@ -209,7 +196,7 @@ buffer_delete_row(Buffer *b, s32 index)
 
     if (index >= b->line_count) return;
     row = b->lines + index;
-    // editorFreeRow(row); // TODO
+    // editor_free_row(row); // TODO
     memmove(b->lines + index, b->lines + index + 1,sizeof(b->lines[0]) * (b->line_count - index - 1));
     for (int j = index; j < b->line_count - 1; j++) b->lines[j].index++;
     b->line_count--;
@@ -224,7 +211,8 @@ buffer_backspace(Buffer *b)
 
     if (at > 0)
     {
-	memmove(row->text + at, row->text + at + 1, row->length - at);
+	s32 delete_index = at - 1;
+	memmove(row->text + delete_index, row->text + delete_index + 1, row->length - delete_index);
 	row->length--;
 	b->cursor_index -= 1;
     }
@@ -258,9 +246,9 @@ internal void
 buffer_forwards(Buffer *b)
 {
     Line *line = b->lines + b->cursor_row;
-    s32 at = b->cursor_index - 1;
+    s32 at = b->cursor_index;
 
-    if (at < line->length-1)
+    if (at < line->length - 2) // can we move to the position before the EOL
     {
 	b->cursor_index += 1;
     }
