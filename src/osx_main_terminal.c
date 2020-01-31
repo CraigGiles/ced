@@ -435,15 +435,14 @@ int main(s32 argc, char *argv[])
 	Line *line = &active_buffer->lines[active_buffer->cursor_row];
 	Position pos = {};
 	char tmp[1024];
-	sprintf(tmp, "[-%s-][%s][b:line_count:%i cursor_row:%i, cursor_index:%i row_index:%i, row_length:%i term_rows:%i term_cols:%i]",
+	sprintf(tmp, "[-%s-][%s][lines:%i][cursor(%i:%i)][line(idx:%i,len:%i)][terminal(row:%i,col:%i)]",
 		mode_to_string(editor->mode), 
 		active_window->buffer.name,
 
 		active_buffer->line_count, 
-		active_buffer->cursor_row, active_buffer->cursor_index,
+		active_buffer->cursor_index, active_buffer->cursor_row,
 	        line->index, line->length,
 	        terminal->max_row_count, terminal->max_column_count);
-		// active_buffer->cursor_position.x, active_buffer->cursor_position.y);
 
 	move_cursor_to(0, terminal->max_row_count-2);
 	printf("%s%s", "\x1b[43m", TERM_CLEAR_RIGHT); // yello background and clear right
