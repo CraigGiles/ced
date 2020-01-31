@@ -263,17 +263,26 @@ render(s32 window_count, Window *windows)
 
 	// TODO render only the visible portion of the buffer
 	s32 line_start = 0;
-	s32 line_end   = buffer->line_count;
+	s32 line_end   = terminal->max_row_count - 2; // TODO: don't overwrite status line
+
 	for (s32 line_index = line_start;
 	     line_index < line_end;
 	     ++line_index)
 	{
-	    move_cursor_to(0, line_index);
-	    Line *line = buffer->lines + line_index;
-	    fwrite(line->text, 1, line->length, stdout);
-	    write(STDOUT_FILENO, TERM_CLEAR_RIGHT, 3);     // clear the rest of the line
-	    move_cursor_to(buffer->cursor_index, buffer->cursor_row);
+	    if (line_index < buffer->line_count)
+	    {
+		move_cursor_to(0, line_index);
+		Line *line = buffer->lines + line_index;
+		fwrite(line->text, 1, line->length, stdout);
+		move_cursor_to(line->length, line_index);
+		fwrite(TERM_CLEAR_RIGHT, 1, 3, stdout);
+	    } else {
+		move_cursor_to(0, line_index);
+		fwrite(TERM_CLEAR_RIGHT, 1, 3, stdout);
+	    }
 	}
+
+	move_cursor_to(buffer->cursor_index, buffer->cursor_row);
     }
 
     write(STDOUT_FILENO, TERM_SHOW_CURSOR, 6);         // Show cursor.
@@ -426,14 +435,17 @@ int main(s32 argc, char *argv[])
 	Line *line = &active_buffer->lines[active_buffer->cursor_row];
 	Position pos = {};
 	char tmp[1024];
-	sprintf(tmp, "[-%s-][%s][(%i, %i)(line: index:%i, length:%i]",
+	sprintf(tmp, "[-%s-][%s][b:line_count:%i cursor_row:%i, cursor_index:%i row_index:%i, row_length:%i term_rows:%i term_cols:%i]",
 		mode_to_string(editor->mode), 
 		active_window->buffer.name,
+
+		active_buffer->line_count, 
 		active_buffer->cursor_row, active_buffer->cursor_index,
-	        line->index, line->length);
+	        line->index, line->length,
+	        terminal->max_row_count, terminal->max_column_count);
 		// active_buffer->cursor_position.x, active_buffer->cursor_position.y);
 
-	move_cursor_to(0, terminal->max_row_count-1);
+	move_cursor_to(0, terminal->max_row_count-2);
 	printf("%s%s", "\x1b[43m", TERM_CLEAR_RIGHT); // yello background and clear right
 	printf("%s", tmp);
 	printf(TERM_COLOR_RESET); // reset color
@@ -478,19 +490,6 @@ int main(s32 argc, char *argv[])
 	Line *line = b->lines + line_index;
 	printf("%s\n", line->text);
     }
-
-    #if 0
-    for (s32 window_index = 0;
-	 window_index < window_count;
-	 ++window_index)
-    {
-	Window *w = windows + window_index;
-	Buffer *buffer = &w->buffer;
-
-	printf("%s", buffer->lines[0].text);  // TODO -- temp
-	printf("\n");
-    }
-    #endif
 #endif
 
     return 0;

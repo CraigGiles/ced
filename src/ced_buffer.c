@@ -20,7 +20,7 @@ buffer_insert_line(Buffer *b, s32 index, char *text, s32 len)
     }
     #endif
 
-    #if 1
+#if 1
     if (index <= b->line_count)
     {
 	if (index != b->line_count)
@@ -42,7 +42,7 @@ buffer_insert_line(Buffer *b, s32 index, char *text, s32 len)
 	memcpy(b->lines[index].text, text, len + 1);
 	b->lines[index].index = index;
     }
-    #endif
+#endif
 }
 
 internal void
@@ -106,12 +106,31 @@ buffer_insert_newline(Buffer *b)
     // b->lines[index].text = strdup("");
     // b->lines[index].index = index;
 #endif
+    s32 current_row = b->cursor_row;
+    s32 current_col = b->cursor_index;
+    Line *line = (current_row >= b->line_count) ? 0 : &b->lines[current_row];
 
-    #if 1
-    buffer_insert_line(b, b->cursor_row + 1, "", 1);
-    b->cursor_row++;
-    b->cursor_index = 0;
-    #endif
+    if (!line) // cursor is past the end of editable text
+    {
+	// TODO
+    }
+
+    if (line && current_col < line->length)
+    {
+	buffer_insert_line(b, b->cursor_row + 1, line->text + b->cursor_index, line->length - b->cursor_index + 1);
+
+	line->text[b->cursor_index] = '\0';
+	line->length = b->cursor_index;
+	b->cursor_index = line->length - b->cursor_index;
+	b->cursor_row++;
+    }
+    else
+    {
+	buffer_insert_line(b, b->cursor_row + 1, "", 0);
+	b->cursor_row++;
+	b->cursor_index = 0;
+    }
+
 
 #if 0
     int fileline = b->cursor_row;
@@ -175,22 +194,49 @@ buffer_insert_newline(Buffer *b)
 }
 
 internal void
+buffer_insert_string(Buffer *b, Line *row, char* text, s32 len)
+{
+    row->text = realloc(row->text,row->length+len+1);
+    memcpy(row->text + row->length, text, len);
+    row->length += len;
+    row->text[row->length] = '\0';
+}
+
+internal void
+buffer_delete_row(Buffer *b, s32 index)
+{
+    Line *row;
+
+    if (index >= b->line_count) return;
+    row = b->lines + index;
+    // editorFreeRow(row); // TODO
+    memmove(b->lines + index, b->lines + index + 1,sizeof(b->lines[0]) * (b->line_count - index - 1));
+    for (int j = index; j < b->line_count - 1; j++) b->lines[j].index++;
+    b->line_count--;
+}
+
+internal void
 buffer_backspace(Buffer *b)
 {
     Line *row = b->lines + b->cursor_row;
-    s32 at = b->cursor_index - 1;
+    s32 row_index = b->cursor_row;
+    s32 at = b->cursor_index;
 
-    if (at < 0)
+    if (at > 0)
     {
-	// TODO: move the row to the previous row and delete this one
+	memmove(row->text + at, row->text + at + 1, row->length - at);
+	row->length--;
+	b->cursor_index -= 1;
+    }
+    else if (at == 0 && row_index > 0)
+    {
+        b->cursor_index = b->lines[row_index - 1].length;
+        buffer_insert_string(b, &b->lines[row_index - 1], row->text, row->length);
+        buffer_delete_row(b, row_index);
+        row = 0;
+	if (b->cursor_row > 0) b->cursor_row--;
     }
 
-    // if the cursor is placed beyond the actual end of line
-    if (row->length <= at) return;
-
-    memmove(row->text + at, row->text + at + 1, row->length - at);
-    row->length--;
-    b->cursor_index -= 1;
 }
 
 
