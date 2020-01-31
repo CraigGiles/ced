@@ -270,8 +270,9 @@ render(s32 window_count, Window *windows)
 	{
 	    move_cursor_to(0, line_index);
 	    Line *line = buffer->lines + line_index;
-	    fwrite(line->text, 1, line->used, stdout);
+	    fwrite(line->text, 1, line->length, stdout);
 	    write(STDOUT_FILENO, TERM_CLEAR_RIGHT, 3);     // clear the rest of the line
+	    move_cursor_to(buffer->cursor_index, buffer->cursor_row);
 	}
     }
 
@@ -368,13 +369,16 @@ handle_input(Editor *editor, Window *window, s16 key_code)
 	    buffer_backspace(buffer);
         } break;
 
+	case ARROW_LEFT:
 	case CTRL('H'): // left
 	{
+	    buffer_backwards(buffer);
 	} break;
 
+	case ARROW_RIGHT:
 	case CTRL('L'): // right
 	{
-	    buffer_insert_newline(buffer);
+	    buffer_forwards(buffer);
 	} break;
 
         default:
@@ -419,12 +423,14 @@ int main(s32 argc, char *argv[])
 	// NOTE: status line
 	// TODO: move this to the editor not the presentation layer
 #if 1
+	Line *line = &active_buffer->lines[active_buffer->cursor_row];
 	Position pos = {};
 	char tmp[1024];
-	sprintf(tmp, "[-%s-][%s][(%i, %i)]",
+	sprintf(tmp, "[-%s-][%s][(%i, %i)(line: index:%i, length:%i]",
 		mode_to_string(editor->mode), 
 		active_window->buffer.name,
-		active_buffer->cursor_row, active_buffer->cursor_index);
+		active_buffer->cursor_row, active_buffer->cursor_index,
+	        line->index, line->length);
 		// active_buffer->cursor_position.x, active_buffer->cursor_position.y);
 
 	move_cursor_to(0, terminal->max_row_count-1);

@@ -37,7 +37,6 @@ buffer_insert_line(Buffer *b, s32 index, char *text, s32 len)
 	b->lines = realloc(b->lines, sizeof(Line) * b->line_count + 1);
 	b->line_count++;
 
-	b->lines[index].used = 0;
 	b->lines[index].length = len;
 	b->lines[index].text = malloc(len + 1);
 	memcpy(b->lines[index].text, text, len + 1);
@@ -53,7 +52,7 @@ buffer_initialize(Buffer *b, char *name)
     len = (len < BUFFER_NAME_SIZE) ? len : BUFFER_NAME_SIZE;
     strncpy(b->name, name, len);
 
-    buffer_insert_line(b, 0, "", 1);
+    buffer_insert_line(b, 0, "", 0);
 
     b->cursor_row = 0;
     b->cursor_index = 0;
@@ -65,24 +64,24 @@ buffer_insert(Buffer *b, s32 c)
     Line *row = b->lines + b->cursor_row;
     s32 at = b->cursor_index;
 
-    if (at > row->used) {
+    if (at > row->length) {
         /* Pad the string with spaces if the insert location is outside the
          * current length by more than a single character. */
-        int padlen = at - row->used;
+        int padlen = at - row->length;
 
         /* In the next line +2 means: new char and null term. */
-        row->text = realloc(row->text, row->used + padlen + 2);
-        memset(row->text + row->used, ' ', padlen);
-        row->text[row->used + padlen + 1] = '\0';
-        row->used += padlen + 1;
+        row->text = realloc(row->text, row->length + padlen + 2);
+        memset(row->text + row->length, ' ', padlen);
+        row->text[row->length + padlen + 1] = '\0';
+        row->length += padlen + 1;
     }
     else
     {
         /* If we are in the middle of the string just make space for 1 new
          * char plus the (already existing) null term. */
-        row->text = realloc(row->text, row->used + 2);
-        memmove(row->text + at + 1, row->text + at, row->used - at + 1);
-        row->used++;
+        row->text = realloc(row->text, row->length + 2);
+        memmove(row->text + at + 1, row->text + at, row->length - at + 1);
+        row->length++;
     }
 
     
@@ -187,11 +186,38 @@ buffer_backspace(Buffer *b)
     }
 
     // if the cursor is placed beyond the actual end of line
-    if (row->used <= at) return;
+    if (row->length <= at) return;
 
-    memmove(row->text + at, row->text + at + 1, row->used - at);
-    row->used--;
+    memmove(row->text + at, row->text + at + 1, row->length - at);
+    row->length--;
     b->cursor_index -= 1;
+}
+
+
+// Moving Around Text
+// -----------------------------------------------
+internal void
+buffer_backwards(Buffer *b)
+{
+    Line *line = b->lines + b->cursor_row;
+    s32 at = b->cursor_index;
+
+    if (at > 0)
+    {
+	b->cursor_index -= 1;
+    }
+}
+
+internal void
+buffer_forwards(Buffer *b)
+{
+    Line *line = b->lines + b->cursor_row;
+    s32 at = b->cursor_index - 1;
+
+    if (at < line->length-1)
+    {
+	b->cursor_index += 1;
+    }
 }
 
 #if 0
@@ -271,18 +297,6 @@ buffer_backspace(Buffer *b)
     memmove(row->text + at, row->text + at + 1, row->size_used - at);
     row->size_used--;
     b->cursor_position.x -= 1;
-}
-
-// Moving Around Text
-// -----------------------------------------------
-internal void
-buffer_backward(Buffer *b)
-{
-}
-
-internal void
-buffer_forward(Buffer *b)
-{
 }
 
 internal void
