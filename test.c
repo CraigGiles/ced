@@ -6,53 +6,34 @@ global_variable Terminal *terminal;
 global_variable struct termios orig_termios;   /* In order to restore at exit.*/
 global_variable struct termios raw_state;      /* values for editor mode */
 
-#if 1
+#if 0
 internal void
 editor_open_file(Buffer *buffer, char *filename)
 {
-    FILE *fp;
+    char* result = 0;
+    FILE *file = fopen(filename, "r");
 
-    // buffer->dirty = 0;
-    // free(buffer->filename);
-    strncpy(buffer->file, filename, BUFFER_NAME_SIZE); // TODO: ensure we're only copying filename
-
-    fp = fopen(filename,"r");
-
-    // TODO: error checking
-#if 0
-    if (!fp)
+    char ch;
+    while ((ch = getc(file)) != EOF)
     {
-
-	if (errno != ENOENT)
+	if (ch == '\r')
 	{
-	    perror("Opening file");
-	    exit(1);
+	    continue;
 	}
-
-    }
-#endif
-
-    if (fp)
-    {
-	char *line = NULL;
-
-	size_t linecap = 0;
-	ssize_t linelen;
-
-	while((linelen = getline(&line, &linecap, fp)) != -1) {
-	    if (linelen && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
-	    {
-		line[--linelen] = '\0';
-	    }
-
-	    buffer_insert_line(buffer, buffer->line_count, line, linelen);
+	else if (ch == '\n')
+	{
+	    buffer_insert_newline(buffer);
+	    buffer_insert_string(buffer, TERM_CLEAR_RIGHT);
 	}
-	free(line);
-	fclose(fp);
+	else
+	{
+	    buffer_insert(buffer, ch);
+	}
     }
 
-    buffer->cursor_row = 0;
-    buffer->cursor_index = 0;
+    fclose(file);
+    strncpy(buffer->filename, filename, MAX_BUFFER_NAME); // TODO: ensure we're only copying filename
+    buffer_move_to_beginning(buffer);
 }
 #endif
 
@@ -263,18 +244,7 @@ initialize_terminal(Terminal *result, s32 argc, char* argv[])
     // TODO if argc > 1 load file
 
     ed->windows[0].buffer.line_count = 0;
-
-    if (argc > 1)
-    {
-	// buffer name is file_name.ext
-	buffer_initialize(&ed->windows[0].buffer, "*scratch*");
-
-	editor_open_file(&ed->windows[0].buffer, argv[1]);
-    }
-    else
-    {
-	buffer_initialize(&ed->windows[0].buffer, "*scratch*");
-    }
+    buffer_initialize(&ed->windows[0].buffer, "*scratch*");
 }
 
 internal void

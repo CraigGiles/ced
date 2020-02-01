@@ -91,7 +91,7 @@ buffer_insert_newline(Buffer *b)
     {
 	buffer_insert_line(b, b->cursor_row + 1, line->text + b->cursor_index, line->length - b->cursor_index + 1);
 
-	line->text[b->cursor_index] = '\0';
+	line->text[current_col] = '\0';
 	line->length = b->cursor_index;
 	b->cursor_index = line->length - b->cursor_index;
 	b->cursor_row++;
