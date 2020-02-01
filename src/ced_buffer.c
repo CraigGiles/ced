@@ -44,6 +44,60 @@ buffer_initialize(Buffer *b, char *name)
     b->cursor_index = 0;
 }
 
+internal void
+buffer_initialize_and_open(Buffer *b, char *name)
+{
+    s32 len = strlen(name);
+    len = (len < BUFFER_NAME_SIZE) ? len : BUFFER_NAME_SIZE;
+    strncpy(b->name, name, len);
+
+    FILE *fp;
+
+    // buffer->dirty = 0;
+    // free(buffer->filename);
+    strncpy(b->file, name, BUFFER_NAME_SIZE); // TODO: ensure we're only copying filename
+
+    fp = fopen(name,"r");
+
+    // TODO: error checking
+#if 0
+    if (!fp)
+    {
+
+	if (errno != ENOENT)
+	{
+	    perror("Opening file");
+	    exit(1);
+	}
+
+    }
+#endif
+
+    if (fp)
+    {
+	char *line = NULL;
+
+	size_t linecap = 0;
+	ssize_t linelen;
+
+	while((linelen = getline(&line, &linecap, fp)) != -1)
+	{
+	    if (linelen && (line[linelen - 1] == '\n' ||
+			    line[linelen - 1] == '\r'))
+	    {
+		line[--linelen] = '\0';
+	    }
+
+	    buffer_insert_line(b, b->line_count, line, linelen);
+	}
+	free(line);
+	fclose(fp);
+    }
+
+    b->cursor_row = 0;
+    b->cursor_index = 0;
+}
+
 internal void // TODO: should we return 'true' or 'false'
 buffer_insert(Buffer *b, s32 c)
 {
